@@ -1,13 +1,13 @@
-all : Writer Reader
+all : Client Server
 
-Writer: Writer.o thread.o Blockable.o
-	g++ -o Writer Writer.o thread.o Blockable.o -pthread -l rt
+Client: Client.o thread.o Blockable.o
+	g++ -o Client Client.o thread.o Blockable.o -pthread -l rt
 
-Reader: Reader.o thread.o Blockable.o
-	g++ -o Reader Reader.o -pthread -l rt
+Server: Server.o thread.o Blockable.o
+	g++ -o Server Server.o -pthread -l rt
 	
-Writer.o : Writer.cpp thread.h Blockable.h SharedObject.h Semaphore.h
-	g++ -c Writer.cpp -std=c++11
+Client.o : Client.cpp thread.h Blockable.h SharedObject.h Semaphore.h
+	g++ -c Client.cpp -std=c++11
 
 thread.o : thread.cpp thread.h Blockable.h
 	g++ -c thread.cpp -std=c++11
@@ -15,5 +15,5 @@ thread.o : thread.cpp thread.h Blockable.h
 Blockable.o : Blockable.cpp Blockable.h
 	g++ -c Blockable.cpp -std=c++11
 	
-Reader.o : Reader.cpp SharedObject.h Semaphore.h
-	g++ -c Reader.cpp -std=c++11 
+Server.o : Server.cpp SharedObject.h Semaphore.h
+	g++ -c Server.cpp -std=c++11 
