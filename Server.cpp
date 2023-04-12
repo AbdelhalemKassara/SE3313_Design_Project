@@ -1,16 +1,20 @@
 #include <iostream>
 #include "SharedObject.h"
 #include "Semaphore.h"
+#include <vector>
 
-struct MyShared
+class MyShared
 {
+	public:
 	int threadId;
 	int reportNum;
 	int delayT;
 };
 
+
 int main(void)
 {
+
 	Semaphore semReader("reader", 1);
 	Semaphore semWriter("writer", 1);
 
@@ -30,3 +34,4 @@ int main(void)
 		semWriter.Signal();
 	}
 }
+ 
