@@ -128,26 +128,3 @@ class Database {
   }
 
 };
-
-// int main() {
-//   Database* database = new Database();
-//   std::string user1 = "testUser1";
-//   std::string user2 = "testUser2";
-
-//   (*database).addUser(user1);
-//   (*database).addUser(user2);
-//   (*database).addMessage(user1, user2, "hello user 2"); //creates the chat as well if it doesn't exist
-
-//   //system("clear"); this is for clearing the terminal output screen
-//   std::cout << (*database).getUsers() << std::endl;
-
-  
-//   std::cout << (*database).getFullChat(user1, user2) << std::endl;
-
-//   //testing clearing screen
-//   // std::this_thread::sleep_for(std::chrono::nanoseconds(1000000000));
-//   // system("clear");
-//   // std::cout << "cleared screen" << std::endl;
-
-//   return 1;
-// }

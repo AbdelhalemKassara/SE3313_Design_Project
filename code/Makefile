@@ -6,7 +6,7 @@ Client: Client.o thread.o Blockable.o
 Server: Server.o thread.o Blockable.o
 	g++ -o Server Server.o -pthread -l rt
 	
-Client.o : Client.cpp thread.h Blockable.h SharedObject.h Semaphore.h
+Client.o : Client.cpp thread.h Blockable.h SharedObject.h Semaphore.h Database.h
 	g++ -c Client.cpp -std=c++11
 
 thread.o : thread.cpp thread.h Blockable.h
