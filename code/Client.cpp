@@ -3,6 +3,7 @@
 #include <thread>
 #include <stdio.h>
 #include "SharedObject.h"
+#include <mutex>
 
 using namespace Sync;
 
@@ -50,11 +51,9 @@ ProcessedPacket processPacket(ByteArray b) {
 }
 
 ProcessedPacket sendRequestToServer(std::string requestType, std::vector<std::string> content) {
-
   ByteArray request(createPacket(requestType, content));
-  Shared<std::string> sharedMem("clientMessage", true);
-  
-  Socket* socket = new Socket("127.0.0.1", 2002);
+
+  Socket* socket = new Socket("127.0.0.1", 2000);
   (*socket).Open();
 
   (*socket).Write(request);//send the request to the server
@@ -172,32 +171,35 @@ void viewOtherUsersPage(Client* client) {
 
 }
 
-void handleUserInput(std::string userName, std::string otherUserName, bool* quit, std::string* message) {
-  char pressed = getchar();
+void handleUserInput(std::string userName, std::string otherUserName, bool* quit) {
+  Shared<std::string> userMessage("clientMessage");
+
+  char pressed = 'a';//this will get written over later
 
   while(true) {
     while(pressed != '\n') {//gets each charater the user enters and adds it to the message variable
-      *message += pressed;
-      std::cout << "message: " << *message << std::endl;    
       pressed = getchar();
+      *userMessage += pressed;
     }
 
-    if(*message == "=quit") {
+    pressed = 'a';//this will get written over later
+    if(*userMessage == "=quit") {
       *quit = true;
-      *message = "";
+      *userMessage = "";
       return;
     } else {
-      sendRequestToServer("addMessage", {userName, otherUserName, *message});
-      *message = "";
+      sendRequestToServer("addMessage", {userName, otherUserName, *userMessage});
+      *userMessage = "";
     }
   }
 }
 
 bool chatWithUser(Client* client) {
-  bool* quit = new bool(false);
-  std::string* message = new std::string("");
+  Shared<std::string> userMessage("clientMessage", true);
 
-  std::thread* thread = new std::thread(handleUserInput, (*client).userName, (*client).otherUserName, quit, message);
+  bool* quit = new bool(false);
+
+  std::thread* thread = new std::thread(handleUserInput, (*client).userName, (*client).otherUserName, quit);
 
   (*thread).detach();
 
@@ -208,7 +210,7 @@ bool chatWithUser(Client* client) {
 
     ProcessedPacket serverPac = sendRequestToServer("getChat", {(*client).userName, (*client).otherUserName});
     std::cout << serverPac.content << std::endl << std::endl;
-    std::cout << *message;
+    std::cout << *userMessage;//eempty string for some reason?
    
 
    sleep(1);
