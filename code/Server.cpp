@@ -33,6 +33,7 @@ ProcessedPacket processPacket(ByteArray b) {
       if(i+1 < pacStr.length()) {
         procPac.content = pacStr.substr(i+1, pacStr.length());
       }
+      break;
     }
   }
 
@@ -124,15 +125,15 @@ ProcessedPacket performRequest(ProcessedPacket pack, Database* db) {
     std::string chat = db->getFullChat(messageInfo.un1, messageInfo.un2);
 
     return {"success", chat};
-  } else if (req == "createChat") {
+  } else if (req == "getChat") {
     //format of packet from client
     //senderUN-reciverUN
     ProcessedPacket p = splitTwo(pack.content);
     std::string user1 = p.requesetType;
     std::string user2 = p.content;
 
-    db->getChatMessages(user1, user2);//this will automatically create a new chat if it doesn't exist
-    return {"success", "A group Chat has been created"};
+    std::string messages = db->getFullChat(user1, user2);//this will automatically create a new chat if it doesn't exist
+    return {"success", messages};
   } else if (req == "login") {
     //format of packet from client
     //senderUN
@@ -140,6 +141,16 @@ ProcessedPacket performRequest(ProcessedPacket pack, Database* db) {
 
     if(exists) {
       return {"success", "You have logged in."};
+    } else {
+      return {"error", "This user doesn't exist"};
+    }
+  } else if (req == "userExists") {
+    //format of packet from client
+    //username
+    bool exists = db->doesUserExist(pack.content);
+
+    if(exists) {
+      return {"success", "This user Exists."};
     } else {
       return {"error", "This user doesn't exist"};
     }

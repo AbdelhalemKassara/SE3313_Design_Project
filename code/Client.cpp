@@ -134,6 +134,59 @@ void errorPage() {
   
 }
 
+void viewOtherUsersPage(Client* client) {
+  while(true) {
+    system("clear");
+    std::cout << "Users you can chat with:" << std::endl;
+    ProcessedPacket serverPac = sendRequestToServer("getUsers", {" "});
+    std::cout << serverPac.content << std::endl << std::endl;
+
+
+    //getting the user that we will start chatting with
+    std::string userName;
+    std::getline(std::cin, userName);
+
+    if(userName != (*client).userName) {
+      serverPac = sendRequestToServer("userExists", {userName});
+      
+      if(serverPac.requesetType == "success") {
+        (*client).otherUserName = userName;
+        return;
+      } else {
+        system("clear");
+        std::cout << serverPac.content << " Press any key to continue." << std::endl;
+        std::cin.get();
+      }
+    } else {
+      system("clear");
+      std::cout << "You can't chat with yourself, press any key to continue." << std::endl;
+      std::cin.get();
+    }
+
+
+  }
+
+}
+
+bool chatWithUser(Client* client) {
+  while(true) {
+    system("clear");
+    std::cout << "enter =quit to go back." << std::endl;
+  
+    ProcessedPacket serverPac = sendRequestToServer("getChat", {(*client).userName, (*client).otherUserName});
+    std::cout << serverPac.content << std::endl << std::endl;
+    
+    std::string message;
+    std::getline(std::cin, message);
+
+    if(message == "=quit") {
+      return false;
+    }
+
+    serverPac = sendRequestToServer("addMessage", {(*client).userName, (*client).otherUserName, message});
+  }
+}
+
 void registration(Client* client) {
   system("clear");
   std::string userInput;//this string will contain the user's input
@@ -160,6 +213,11 @@ int main()
   Client* client = new Client{"", ""};
   
   registration(client);
-  
+
+  while(true) {
+    viewOtherUsersPage(client);
+    chatWithUser(client);
+  }
+
   return 1;
 }

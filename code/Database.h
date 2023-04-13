@@ -67,10 +67,10 @@ class Database {
 
   std::string getFullChat(std::string user1, std::string user2) {
     std::string output = "";
-    std::vector<Message> messages = (*getChatStruct(user1, user2)).messages;
+    std::vector<Message>* messages = getChatMessages(user1, user2);
 
-    for(int i = 0; i < messages.size(); i++) {
-      output += messages[i].user + " : " + messages[i].message;
+    for(int i = 0; i < (*messages).size(); i++) {
+      output += (*messages)[i].user + " : " + (*messages)[i].message + "\n";
     }
 
     return output;
