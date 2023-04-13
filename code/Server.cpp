@@ -225,7 +225,7 @@ class ReqThread : public Thread {
 int main(void)
 {
   std::vector<std::thread*> threads;
-  SocketServer server(2001);
+  SocketServer server(2002);
   ReqThread* requestThread = new ReqThread(&server, &threads);
 
   FlexWait cinWaiter(1, stdin);
