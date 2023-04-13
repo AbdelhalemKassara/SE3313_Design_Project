@@ -173,6 +173,7 @@ ProcessedPacket performRequest(ProcessedPacket pack, Database* db) {
 
 //this is the client request handler
 void dealWithClientRequest(Socket* socket) {
+  Semaphore databaseSem("databaseSem", 1);
 
   ByteArray clientData;
   int val = (*socket).Read(clientData);
@@ -188,10 +189,10 @@ void dealWithClientRequest(Socket* socket) {
   //process the client's request
   ProcessedPacket packet = processPacket(clientData.ToString());
 
+  databaseSem.Wait();
   Shared<DataBaseContainer> sharedMem("origin");
-  //semaphore stuff here
   ProcessedPacket returnPacket = performRequest(packet, sharedMem->db);
-
+  databaseSem.Signal();
 
   //response to the client
   ByteArray out(createPacket(returnPacket.requesetType, returnPacket.content));
@@ -214,7 +215,8 @@ class ReqThread : public Thread {
   
 
   virtual long ThreadMain(void) {
-    Shared<DataBaseContainer> sharedMem("origin");
+    Shared<DataBaseContainer> sharedMem("origin", true);
+    Semaphore databaseSem("databaseSem", 1, true);
     sharedMem->db = new Database();//add a new instance of the database to the shared memory
     
     while(true) {
@@ -225,38 +227,38 @@ class ReqThread : public Thread {
         std::thread* worker = new std::thread(dealWithClientRequest, tempSoc);
         (*threads).push_back(worker);
 
-        (*worker).detach();//let the thread work independently
-
       } catch (std::string s) {
-        std::cout << s << std::endl;
+        std::cout << s << "here asdfasdf"<< std::endl;
       } catch (TerminationException e) {
         std::cout << "Server has been terminated." << std::endl;
       }
     }
     return 0;
   }
-
+  
 };
 
 int main(void)
 {
   std::vector<std::thread*> threads;
-  SocketServer server(2000);
+  SocketServer server(2002);
   ReqThread* requestThread = new ReqThread(&server, &threads);
 
   FlexWait cinWaiter(1, stdin);
   cinWaiter.Wait();
   std::cin.get();
 
-
-  //wait until all client handler threads are done
-  for(int i = 0; i < threads.size(); i++) {
-    if((*threads[i]).joinable()) {
-      (*threads[i]).join();//waits until the client threads have been handled
-      delete threads[i];
-      i--;
-    }
-  }  
+  try {
+    //wait until all client handler threads are done
+    for(int i = 0; i < threads.size(); i++) {
+      if((*threads[i]).joinable()) {
+        (*threads[i]).join();//waits until the client threads have been handled
+      }
+    }     
+  } catch(...) {
+    std::cout << "There was an issue with stopping the threads" << std::endl;
+  }
+  
 
   server.Shutdown();
 }

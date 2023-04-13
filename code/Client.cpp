@@ -3,7 +3,6 @@
 #include <thread>
 #include <stdio.h>
 #include "SharedObject.h"
-#include <mutex>
 
 using namespace Sync;
 
@@ -53,7 +52,7 @@ ProcessedPacket processPacket(ByteArray b) {
 ProcessedPacket sendRequestToServer(std::string requestType, std::vector<std::string> content) {
   ByteArray request(createPacket(requestType, content));
 
-  Socket* socket = new Socket("127.0.0.1", 2000);
+  Socket* socket = new Socket("127.0.0.1", 2002);
   (*socket).Open();
 
   (*socket).Write(request);//send the request to the server
@@ -137,6 +136,7 @@ void errorPage() {
   
 }
 
+
 void viewOtherUsersPage(Client* client) {
   while(true) {
     system("clear");
@@ -171,59 +171,52 @@ void viewOtherUsersPage(Client* client) {
 
 }
 
-void handleUserInput(std::string userName, std::string otherUserName, bool* quit) {
-  Shared<std::string> userMessage("clientMessage");
+void handleUserInput(std::string userName, std::string otherUserName, bool* quit, std::string* userMessage) {
 
-  char pressed = 'a';//this will get written over later
+  char pressed;//this will get written over later
 
-  while(true) {
-    while(pressed != '\n') {//gets each charater the user enters and adds it to the message variable
-      pressed = getchar();
-      *userMessage += pressed;
-    }
-
-    pressed = 'a';//this will get written over later
-    if(*userMessage == "=quit") {
-      *quit = true;
-      *userMessage = "";
-      return;
-    } else {
-      sendRequestToServer("addMessage", {userName, otherUserName, *userMessage});
-      *userMessage = "";
+  while(pressed != '\n') {//gets each charater the user enters and adds it to the message variable
+    pressed = getchar();
+    if(pressed != '\n') {
+      (*userMessage) += pressed;
     }
   }
+
+  pressed = 'a';//this will get written over later
+
+  if(*userMessage == "=quit") {
+    *quit = true;
+    (*userMessage).clear();
+    return;
+  } else {
+    sendRequestToServer("addMessage", {userName, otherUserName, *userMessage});
+    (*userMessage).clear();
+  }
+
 }
 
 bool chatWithUser(Client* client) {
-  Shared<std::string> userMessage("clientMessage", true);
+  std::string* userMessage = new std::string("");
 
   bool* quit = new bool(false);
 
-  std::thread* thread = new std::thread(handleUserInput, (*client).userName, (*client).otherUserName, quit);
-
-  (*thread).detach();
 
   while(!*quit) {
-    system("clear");
-    std::cout << "enter =quit to go back." << std::endl;
+    std::thread* thread = new std::thread(handleUserInput, (*client).userName, (*client).otherUserName, quit, userMessage);
 
+    system("clear");
+
+    std::cout << "enter =quit to go back." << std::endl;
 
     ProcessedPacket serverPac = sendRequestToServer("getChat", {(*client).userName, (*client).otherUserName});
     std::cout << serverPac.content << std::endl << std::endl;
-    std::cout << *userMessage;//eempty string for some reason?
-   
 
-   sleep(1);
+    (*thread).join();
+    
   }
 
-  while(true) {
-    if((*thread).joinable()) {
-      (*thread).join();
-      break;
-    }
-  }
-
-  //add code for deleteing pointers and force quitting the thread (use bool variable pointer)
+  delete quit;
+  delete userMessage;
 }
 
 
