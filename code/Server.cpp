@@ -24,6 +24,11 @@ ByteArray createPacket(std::string requestType, std::string content) {
 
 ProcessedPacket processPacket(ByteArray b) {
   std::string pacStr = b.ToString();
+  
+  //removve herere sadl;fjfadlsjlksdflksdlkjdsffjklslkfjsdlfksjafsdlkj
+  std::cout << pacStr << std::endl;
+
+
   ProcessedPacket procPac = {"", ""};
   
   for(int i = 0; i < pacStr.length(); i++) {
@@ -97,7 +102,7 @@ TwoUNAndVal splitTwoUn(std::string str) {
 
 ProcessedPacket performRequest(ProcessedPacket pack, Database* db) {
   std::string req = pack.requesetType;
-  std::cout << req << std::endl;
+  //std::cout << req << " : " << pack.content << std::endl;
 
   if(req == "addUser") {
     //format of packet from client
