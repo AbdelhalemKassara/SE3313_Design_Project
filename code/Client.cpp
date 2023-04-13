@@ -32,6 +32,7 @@ ByteArray createPacket(std::string requestType, std::vector<std::string> content
   return ByteArray(output);
 }
 
+//processes the incoming packet from the server using our custom protcol
 ProcessedPacket processPacket(ByteArray b) {
   std::string pacStr = b.ToString();
   ProcessedPacket procPac = {"", ""};
@@ -177,11 +178,11 @@ void viewOtherUsersPage(Client* client) {
       std::cin.get();
     }
 
-
   }
 
 }
 
+//this is the thread that will handle the user input when they are chatting with another user
 void handleUserInput(std::string userName, std::string otherUserName, bool* quit, std::string* userMessage, bool* back) {
 
   char pressed;//this will get written over later
@@ -210,6 +211,7 @@ void handleUserInput(std::string userName, std::string otherUserName, bool* quit
 
 }
 
+//this is the page where the user will chat with another user
 bool chatWithUser(Client* client) {
   std::string* userMessage = new std::string("");
 
@@ -233,7 +235,7 @@ bool chatWithUser(Client* client) {
   delete quit;
   delete back;
   delete userMessage;
-  
+
   return output;
 }
 

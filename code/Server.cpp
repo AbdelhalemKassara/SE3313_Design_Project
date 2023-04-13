@@ -22,6 +22,7 @@ ByteArray createPacket(std::string requestType, std::string content) {
   return ByteArray(requestType + "-" + content);
 }
 
+//this takes in a request from the user and separates the request from the content ("body") of the packet
 ProcessedPacket processPacket(ByteArray b) {
   std::string pacStr = b.ToString();
 
@@ -40,6 +41,7 @@ ProcessedPacket processPacket(ByteArray b) {
 
   return procPac;
 }
+//takes in a string with the format something-something and returns a processed packet
 ProcessedPacket splitTwo(std::string pacStr) {
   ProcessedPacket procPac = {"", ""};
   
@@ -74,7 +76,6 @@ struct TwoUNAndVal {
 };
 
 //splits un1-un2-anythingElse
-//splits un1-un2-anythingElse
 TwoUNAndVal splitTwoUn(std::string str) {
   int count = 0;
   int previousIndex = 0;
@@ -103,8 +104,8 @@ ProcessedPacket performRequest(ProcessedPacket pack, Database* db) {
     //format of packet from client
     //username
     bool containsDash = hasDash(pack.content);
-    if(containsDash) {
-      return {"error" , "This username is invalid, your username can't contain a -."};
+    if(containsDash || pack.content == "") {
+      return {"error" , "This username is invalid, your username can't contain a -, or it is empty."};
     }
 
     bool exists = db->addUser(pack.content);
@@ -210,8 +211,8 @@ class ReqThread : public Thread {
   
 
   virtual long ThreadMain(void) {
-    Shared<DataBaseContainer> sharedMem("origin", true);
-    Semaphore databaseSem("databaseSem", 1, true);
+    Shared<DataBaseContainer> sharedMem("origin", true); //creates the shared memory
+    Semaphore databaseSem("databaseSem", 1, true);  //creates a semaphore for controlling access to the database between the threads
     sharedMem->db = new Database();//add a new instance of the database to the shared memory
     
     while(true) {
