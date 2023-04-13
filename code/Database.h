@@ -35,10 +35,10 @@ class Database {
 	bool addUser(std::string user) {
     if(!doesUserExist(user)) {
       users.push_back(user);
-      return true;
+      return false;
     }
 
-    return false;
+    return true;
 	}
 
 	std::vector<Message>* getChatMessages(std::string user1, std::string user2) {

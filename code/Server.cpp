@@ -3,54 +3,181 @@
 #include <thread>
 #include "thread.h"
 #include <vector>
+#include "Database.h"
+#include "Semaphore.h"
+#include "SharedObject.h"
+#include "Blockable.h"
+#include <cstring>  
 
 using namespace Sync;
 
+struct ProcessedPacket {
+  std::string requesetType;
+  std::string content;
+};
+struct DataBaseContainer {
+  Database* db;
+};
+ByteArray createPacket(std::string requestType, std::string content) {
+  return ByteArray(requestType + "-" + content);
+}
 
+ProcessedPacket processPacket(ByteArray b) {
+  std::string pacStr = b.ToString();
+  ProcessedPacket procPac = {"", ""};
+  
+  for(int i = 0; i < pacStr.length(); i++) {
+    if(pacStr.at(i) == '-') {
+      procPac.requesetType = pacStr.substr(0, i);
+      
+      if(i+1 < pacStr.length()) {
+        procPac.content = pacStr.substr(i+1, pacStr.length());
+      }
+    }
+  }
+
+  return procPac;
+}
+
+
+
+//checks if a string has a dash inside of it
+bool hasDash(std::string content) {
+    for(int i = 0; i < content.length(); i++) {
+      if(content.at(i) == '-') {
+        return true;
+      }
+    }
+  return false;
+}
+struct TwoUNAndVal {
+  std::string un1;
+  std::string un2;
+  std::string other;
+};
+
+//splits un1-un2-anythingElse
+//splits un1-un2-anythingElse
+TwoUNAndVal splitTwoUn(std::string str) {
+  int count = 0;
+  int previousIndex = 0;
+  TwoUNAndVal out = {"", "", ""};
+  int i = 0;
+  for(; i < str.length(); i++) {
+    if(str.at(i) == '-') {
+      if(count == 0) {
+        out.un1 = str.substr(previousIndex, i-previousIndex);
+        previousIndex = i+1;
+      } else if (count == 1) {
+        out.un2 = str.substr(previousIndex, i-previousIndex);
+        previousIndex = i+1;
+      }
+      count ++; 
+    }
+  }
+  out.other = str.substr(previousIndex, i-previousIndex);
+  return out;
+}
+
+ProcessedPacket performRequest(ProcessedPacket pack, Database* db) {
+  std::string req = pack.requesetType;
+  std::cout << req << std::endl;
+
+  if(req == "addUser") {
+    bool containsDash = hasDash(pack.content);
+    if(containsDash) {
+      return {"error" , "This username is invalid, your username can't contain a -."};
+    }
+
+    bool exists = db->addUser(pack.content);
+
+    if(exists) {//the user already exists
+      return {"error", "This user already exists."};
+    } else {
+      return {"success", "The account has been added"};
+    }
+  } else if (req == "addMessage"){
+    /*
+      format of packet from client
+      senderUN-reciverUN-message
+    */
+    TwoUNAndVal messageInfo = splitTwoUn(pack.content);
+
+    db->addMessage(messageInfo.un1, messageInfo.un2, messageInfo.other);
+  } else if (req == "createChat") {
+
+  } else if (req == "login") {
+
+  } else if (req == "getUsers") {
+    //format of the packet:
+    //userName
+    
+    std::string output = db->getUsers();//this currently is getting all users  
+    return {"success", output};
+  }
+  else {
+    return {"error", "This request is invaild."};
+  }
+}
+
+//this is the client request handler
 void dealWithClientRequest(Socket* socket) {
+
   ByteArray clientData;
   int val = (*socket).Read(clientData);
 
-  //prints the clients request
-  std::cout << clientData.ToString() << std::endl;//write the client request to the console 
+  if(val < 0) {
+    std::cout << "There was an issue" << std::endl;
+    return;
+  } if(val == 0) {
+    std::cout << "Socket from the client side has been closed" << std::endl;
+    return;
+  }
+
+  //process the client's request
+  ProcessedPacket packet = processPacket(clientData.ToString());
+
+  Shared<DataBaseContainer> sharedMem("origin");
+  //semaphore stuff here
+  ProcessedPacket returnPacket = performRequest(packet, sharedMem->db);
+
 
   //response to the client
-  ByteArray out("server response");
+  ByteArray out(createPacket(returnPacket.requesetType, returnPacket.content));
   (*socket).Write(out);
   (*socket).Close();
 
 }
 
+//this thread creates other threads to handle the client requests
 class ReqThread : public Thread {
   private:
   SocketServer *server;
-  std::vector<std::thread*> threads;
+  std::vector<std::thread*>* threads;
 
   public:
-  ReqThread(SocketServer *server) {
+  ReqThread(SocketServer *server, std::vector<std::thread*> *threads) {
     (*this).server = server;
+    (*this).threads = threads;
   }
-
-  ~ReqThread() {
-    //wait until all client handler threads are done
-    for(int i = 0; i < threads.size(); i++) {
-      (*threads[i]).join();//waits until the client threads have been handled
-    }  
-  }
+  
 
   virtual long ThreadMain(void) {
+    Shared<DataBaseContainer> sharedMem("origin");
+    sharedMem->db = new Database();//add a new instance of the database to the shared memory
+    
     while(true) {
       try {
         Socket soc = (*server).Accept(); //wait until a client connects
         Socket *tempSoc = new Socket(soc);
         
         std::thread* worker = new std::thread(dealWithClientRequest, tempSoc);
-        threads.push_back(worker);
+        (*threads).push_back(worker);
 
         (*worker).detach();//let the thread work independently
 
       } catch (std::string s) {
-
+        std::cout << s << std::endl;
       } catch (TerminationException e) {
         std::cout << "Server has been terminated." << std::endl;
       }
@@ -63,27 +190,22 @@ class ReqThread : public Thread {
 int main(void)
 {
   std::vector<std::thread*> threads;
+  SocketServer server(2002);
+  ReqThread* requestThread = new ReqThread(&server, &threads);
 
-  SocketServer server(2001);
-  bool exit = false;
+  FlexWait cinWaiter(1, stdin);
+  cinWaiter.Wait();
+  std::cin.get();
 
-  while(!exit) {//keep creating a new thread for each client that connects
-    Socket soc = server.Accept(); //wait until a client connects
-    Socket *tempSoc = new Socket(soc);
-    std::thread* worker = new std::thread(dealWithClientRequest, tempSoc);
-    threads.push_back(worker);
 
-    (*worker).detach();//let the thread work independently
-  }
-
-  //wait until all threads are done
+  //wait until all client handler threads are done
   for(int i = 0; i < threads.size(); i++) {
-    (*threads[i]).join();//waits until the client threads have been handled
-  }
+    if((*threads[i]).joinable()) {
+      (*threads[i]).join();//waits until the client threads have been handled
+      delete threads[i];
+      i--;
+    }
+  }  
 
   server.Shutdown();
-}
- 
-ByteArray createPacket(std::string requestType, std::string content) {
-  return ByteArray(requestType + "-" + content);
 }

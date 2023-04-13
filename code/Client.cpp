@@ -48,15 +48,18 @@ int main()
 {
   Client* client = new Client{"", ""};
   
-	Socket socket("127.0.0.1", 2001);
+	Socket socket("127.0.0.1", 2002);
   socket.Open();
 
-  socket.Write(createPacket("createAccount", "testAccount"));
+
+  socket.Write(createPacket("getUsers", "asdfasdf"));
 
   //registration(client);
 
+  //server response
   ByteArray serverResponse;
   int conStatus = socket.Read(serverResponse);
+
   if(conStatus == 0) {//there is no connection with the server
     std::cout << serverResponse.ToString() << std::endl;
     std::cout << "we have disconnected from the server" << std::endl;
@@ -64,9 +67,7 @@ int main()
   } else if (conStatus < 0) {
     std::cout << "there was an issue processing your request, connection status < 0" << std::endl;
   } else {
-    ProcessedPacket packet = processPacket(serverResponse);
     std::cout << serverResponse.ToString() << std::endl;
-    std::cout << packet.requesetType << "-" << packet.content << std::endl;
   }
 
   socket.Close();
