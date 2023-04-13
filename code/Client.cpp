@@ -49,39 +49,46 @@ ProcessedPacket processPacket(ByteArray b) {
   return procPac;
 }
 
+//this is responsible for sending all requests to the server
+//it will handle all serverside issues
 ProcessedPacket sendRequestToServer(std::string requestType, std::vector<std::string> content) {
-  ByteArray request(createPacket(requestType, content));
+  try {
+    ByteArray request(createPacket(requestType, content));
 
-  Socket* socket = new Socket("127.0.0.1", 2002);
-  (*socket).Open();
+    Socket* socket = new Socket("127.0.0.1", 2002);
+    (*socket).Open();
 
-  (*socket).Write(request);//send the request to the server
+    (*socket).Write(request);//send the request to the server
 
-  //server response
-  ByteArray serverResponse;
-  int conStatus = (*socket).Read(serverResponse);
-  
-  (*socket).Close();
+    //server response
+    ByteArray serverResponse;
+    int conStatus = (*socket).Read(serverResponse);
+    
+    (*socket).Close();
 
-  if(conStatus == 0) {//there is no connection with the server
-    system("clear");
-    std::cout << "we have disconnected from the server" << std::endl;
-  } else if (conStatus < 0) {
-    std::cout << "there was an issue processing your request, connection status < 0" << std::endl;
-  } else {
-    return processPacket(serverResponse);
+    if(conStatus == 0) {//there is no connection with the server
+      system("clear");
+      std::cout << "we have disconnected from the server" << std::endl;
+    } else if (conStatus < 0) {
+      std::cout << "there was an issue processing your request, connection status < 0" << std::endl;
+    } else {
+      return processPacket(serverResponse);
+    }
+
+  } catch (...) {
+    std::cout << "There was an issue with the request to the server" << std::endl;
   }
-
   return {"", ""};
 }
 
-
-//pages
+//this is the welcome page
 void mainPage() {
   system("clear");//clear the screen
 	std::cout << "You can exit the program by entering 'exit'.\n\nWelcome To our Chat application:\nAre you an existing user? (y/n)?" << std::endl;  
 }
 
+//this is the login page where we will keep prompting the user to enter in the username
+//until they enter a valid username or want to go back
 bool loginUserPage(Client* client) {
   system("clear");
   std::cout << "(enter 'back' to go back)\n\nPlease enter your username:" << std::endl;
@@ -106,6 +113,8 @@ bool loginUserPage(Client* client) {
  }
 }
 
+//this displays the account creation page and won't leave unitl 
+//the user enters in a valid username or wants to go back
 bool createUserPage(Client* client) {
   system("clear");
   std::cout << "(enter 'back' to go back)\n\nPlease enter a username that you would like to have:" << std::endl;
@@ -120,15 +129,16 @@ bool createUserPage(Client* client) {
 
     ProcessedPacket serverPac = sendRequestToServer("addUser", {userName});//send request to the server
 
-    if(serverPac.requesetType == "success") {
+    if(serverPac.requesetType == "success") {//if the account was created successfully
       (*client).userName = userName;
       return true;
-    } else {
+    } else { //display the issue with the username
       std::cout << serverPac.content << std::endl;
     }
   }
 }
 
+//this is a general error page to display that something has gone wrong
 void errorPage() {
   system("clear");
   std::cout << "There was an issue processing your request, enter any key to continue." << std::endl;
@@ -136,7 +146,8 @@ void errorPage() {
   
 }
 
-
+//this will display all the registered users
+//and won't leave this page until the user has entered an a user that they want to talk to.
 void viewOtherUsersPage(Client* client) {
   while(true) {
     system("clear");
@@ -171,7 +182,7 @@ void viewOtherUsersPage(Client* client) {
 
 }
 
-void handleUserInput(std::string userName, std::string otherUserName, bool* quit, std::string* userMessage) {
+void handleUserInput(std::string userName, std::string otherUserName, bool* quit, std::string* userMessage, bool* back) {
 
   char pressed;//this will get written over later
 
@@ -188,6 +199,10 @@ void handleUserInput(std::string userName, std::string otherUserName, bool* quit
     *quit = true;
     (*userMessage).clear();
     return;
+  } else if(*userMessage == "=back") {
+    *back = true;
+    (*userMessage).clear();
+    return;
   } else {
     sendRequestToServer("addMessage", {userName, otherUserName, *userMessage});
     (*userMessage).clear();
@@ -199,14 +214,14 @@ bool chatWithUser(Client* client) {
   std::string* userMessage = new std::string("");
 
   bool* quit = new bool(false);
+  bool* back = new bool(false);
 
-
-  while(!*quit) {
-    std::thread* thread = new std::thread(handleUserInput, (*client).userName, (*client).otherUserName, quit, userMessage);
+  while(!*back && !*quit) {
+    std::thread* thread = new std::thread(handleUserInput, (*client).userName, (*client).otherUserName, quit, userMessage, back);
 
     system("clear");
 
-    std::cout << "enter =quit to go back." << std::endl;
+    std::cout << "enter =quit exit the program or enter =back to go back." << std::endl;
 
     ProcessedPacket serverPac = sendRequestToServer("getChat", {(*client).userName, (*client).otherUserName});
     std::cout << serverPac.content << std::endl << std::endl;
@@ -214,9 +229,12 @@ bool chatWithUser(Client* client) {
     (*thread).join();
     
   }
-
+  bool output(*quit);
   delete quit;
+  delete back;
   delete userMessage;
+  
+  return output;
 }
 
 
@@ -246,12 +264,19 @@ int main()
 {
   Client* client = new Client{"", ""};
   
-  registration(client);
+  try {
+    registration(client);
 
-  while(true) {
-    viewOtherUsersPage(client);
-    chatWithUser(client);
-  }
+    bool exit = false;
+    while(!exit) {
+      viewOtherUsersPage(client);
+      exit = chatWithUser(client);
+    }
+
+  } catch (...)
+    {
+      std::cout << "There was an issue with the program." << std::endl;
+    }
 
   return 1;
 }

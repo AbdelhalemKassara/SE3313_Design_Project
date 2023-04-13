@@ -24,10 +24,6 @@ ByteArray createPacket(std::string requestType, std::string content) {
 
 ProcessedPacket processPacket(ByteArray b) {
   std::string pacStr = b.ToString();
-  
-  //removve herere sadl;fjfadlsjlksdflksdlkjdsffjklslkfjsdlfksjafsdlkj
-  std::cout << pacStr << std::endl;
-
 
   ProcessedPacket procPac = {"", ""};
   
@@ -102,7 +98,6 @@ TwoUNAndVal splitTwoUn(std::string str) {
 
 ProcessedPacket performRequest(ProcessedPacket pack, Database* db) {
   std::string req = pack.requesetType;
-  //std::cout << req << " : " << pack.content << std::endl;
 
   if(req == "addUser") {
     //format of packet from client
@@ -228,7 +223,7 @@ class ReqThread : public Thread {
         (*threads).push_back(worker);
 
       } catch (std::string s) {
-        std::cout << s << "here asdfasdf"<< std::endl;
+        std::cout << s << std::endl;
       } catch (TerminationException e) {
         std::cout << "Server has been terminated." << std::endl;
       }
@@ -240,14 +235,17 @@ class ReqThread : public Thread {
 
 int main(void)
 {
+  int port = 2002;
   std::vector<std::thread*> threads;
-  SocketServer server(2002);
+  SocketServer server(port);
+  std::cout << "The server is on and is listening on 127.0.0.1:" << port << std::endl;
+
   ReqThread* requestThread = new ReqThread(&server, &threads);
 
   FlexWait cinWaiter(1, stdin);
   cinWaiter.Wait();
   std::cin.get();
-
+  
   try {
     //wait until all client handler threads are done
     for(int i = 0; i < threads.size(); i++) {

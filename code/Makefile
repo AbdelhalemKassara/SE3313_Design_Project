@@ -1,7 +1,7 @@
 all : Client Server
 
 Client: Client.o Blockable.o socket.o
-	g++ -o Client.out Client.o Blockable.o socket.o -pthread -lncurses -l rt -g
+	g++ -o Client.out Client.o Blockable.o socket.o -pthread -l rt -g
 
 Server: Server.o Blockable.o socketserver.o socket.o thread.o
 	g++ -o Server.out Server.o Blockable.o socketserver.o socket.o thread.o -pthread -l rt -g
