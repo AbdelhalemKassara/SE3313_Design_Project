@@ -32,6 +32,7 @@ class Database {
 
   }
 
+
 	bool addUser(std::string user) {
     if(!doesUserExist(user)) {
       users.push_back(user);
@@ -84,8 +85,7 @@ class Database {
     
     return out;
   }
-
-  private:
+	
 	bool doesUserExist(std::string user) {
 		for(int i = 0; i < users.size(); i++) {
 			if(users[i] == user) {
@@ -95,6 +95,8 @@ class Database {
 
 		return false;
 	}
+
+  private:
 
 	bool createChat(std::string user1, std::string user2) {
 		if(user1 != user2 && doesUserExist(user1) && doesUserExist(user2)) {

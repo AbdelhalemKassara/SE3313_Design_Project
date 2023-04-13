@@ -4,6 +4,7 @@
 
 using namespace Sync;
 
+
 struct Client {
   std::string userName;
   std::string otherUserName;
@@ -21,8 +22,13 @@ format of the string is requestType-content
 requestType can't contain a - 
 content can contain anything
 */
-ByteArray createPacket(std::string requestType, std::string content) {
-  return ByteArray(requestType + "-" + content);
+ByteArray createPacket(std::string requestType, std::vector<std::string> content) {
+  std::string output = requestType;
+  for(int i = 0; i < content.size(); i++) {
+    output += "-" + content[i];
+  }
+
+  return ByteArray(output);
 }
 
 ProcessedPacket processPacket(ByteArray b) {
@@ -42,51 +48,70 @@ ProcessedPacket processPacket(ByteArray b) {
   return procPac;
 }
 
+ByteArray sendRequestToServer(std::string requestType, std::vector<std::string> content) {
 
+  ByteArray request(createPacket(requestType, content));
 
-int main()
-{
-  Client* client = new Client{"", ""};
-  
-	Socket socket("127.0.0.1", 2002);
-  socket.Open();
+  Socket* socket = new Socket("127.0.0.1", 2001);
+  (*socket).Open();
 
-
-  socket.Write(createPacket("getUsers", "asdfasdf"));
-
-  //registration(client);
+  (*socket).Write(request);//send the request to the server
 
   //server response
   ByteArray serverResponse;
-  int conStatus = socket.Read(serverResponse);
+  int conStatus = (*socket).Read(serverResponse);
+
+  (*socket).Close();
 
   if(conStatus == 0) {//there is no connection with the server
-    std::cout << serverResponse.ToString() << std::endl;
+    system("clear");
     std::cout << "we have disconnected from the server" << std::endl;
-    return 1;
+    return ByteArray();
   } else if (conStatus < 0) {
     std::cout << "there was an issue processing your request, connection status < 0" << std::endl;
   } else {
-    std::cout << serverResponse.ToString() << std::endl;
+    return serverResponse;
   }
-
-  socket.Close();
-  return 1;
+  
 }
 
 
+
+//pages
 void mainPage() {
   system("clear");//clear the screen
 	std::cout << "Welcome To our Chat application:\nAre you an existing user? (y/n)" << std::endl;  
 }
 
-void loginUserPage(Client* client) {
+bool loginUserPage(Client* client) {
   system("clear");
+  std::cout << "Please enter your username (enter 'back' to go back):" << std::endl;
+  
+  while(true) {
+  ///get the user name
+  std::string userName;
+  std::getline(std::cin, userName);
+  if(userName == "back") {//go back to previous page
+    return false;
+  }
 
+  ByteArray serverReturn = sendRequestToServer( "login", {userName});//send request to the server
+  
+  ProcessedPacket serverPac = processPacket(serverReturn); //process the packet that the server returned
+  
+  if(serverPac.requesetType == "success") {
+    (*client).userName = userName;
+    return true;
+  } else {
+    std::cout << serverPac.content << std::endl;
+  }
+  
+ }
 }
 
 void createUserPage() {
   system("clear");
+  std::cout << "Please enter a username that you would like to have:" << std::endl;
 }
 
 void errorPage() {
@@ -96,20 +121,18 @@ void errorPage() {
 }
 
 void registration(Client* client) {
+  system("clear");
   std::string userInput;//this string will contain the user's input
   
-  while(true) {
+  bool exit = false;
+  while(!exit) {
     mainPage();//displays the main page
     std::getline(std::cin, userInput);//get user response
 
     if(userInput == "y" || userInput == "Y" || userInput == "yes" || userInput == "Yes") {
-      loginUserPage(client);
-      //check if the user already exists on the database
-      break;
+      exit = loginUserPage(client);
     } else if(userInput == "n" || userInput == "N" || userInput == "No" || userInput == "no"){
       createUserPage();
-      //check if the user already exists on the database
-      break;
     } else {
       errorPage();
       //std::this_thread::sleep_for(1s);
@@ -117,4 +140,15 @@ void registration(Client* client) {
   }
 }
 
+int main()
+{
+  Client* client = new Client{"", ""};
+  
 
+
+  while(true) {//add a way to exit out of the program
+    registration(client);
+  }
+  
+  return 1;
+}

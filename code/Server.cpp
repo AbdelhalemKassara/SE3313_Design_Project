@@ -38,6 +38,21 @@ ProcessedPacket processPacket(ByteArray b) {
 
   return procPac;
 }
+ProcessedPacket splitTwo(std::string pacStr) {
+  ProcessedPacket procPac = {"", ""};
+  
+  for(int i = 0; i < pacStr.length(); i++) {
+    if(pacStr.at(i) == '-') {
+      procPac.requesetType = pacStr.substr(0, i);
+      
+      if(i+1 < pacStr.length()) {
+        procPac.content = pacStr.substr(i+1, pacStr.length());
+      }
+    }
+  }
+
+  return procPac;
+}
 
 
 
@@ -84,6 +99,8 @@ ProcessedPacket performRequest(ProcessedPacket pack, Database* db) {
   std::cout << req << std::endl;
 
   if(req == "addUser") {
+    //format of packet from client
+    //username
     bool containsDash = hasDash(pack.content);
     if(containsDash) {
       return {"error" , "This username is invalid, your username can't contain a -."};
@@ -104,10 +121,28 @@ ProcessedPacket performRequest(ProcessedPacket pack, Database* db) {
     TwoUNAndVal messageInfo = splitTwoUn(pack.content);
 
     db->addMessage(messageInfo.un1, messageInfo.un2, messageInfo.other);
+    std::string chat = db->getFullChat(messageInfo.un1, messageInfo.un2);
+
+    return {"success", chat};
   } else if (req == "createChat") {
+    //format of packet from client
+    //senderUN-reciverUN
+    ProcessedPacket p = splitTwo(pack.content);
+    std::string user1 = p.requesetType;
+    std::string user2 = p.content;
 
+    db->getChatMessages(user1, user2);//this will automatically create a new chat if it doesn't exist
+    return {"success", "A group Chat has been created"};
   } else if (req == "login") {
+    //format of packet from client
+    //senderUN
+    bool exists = db->doesUserExist(pack.content);
 
+    if(exists) {
+      return {"success", "You have logged in."};
+    } else {
+      return {"error", "This user doesn't exist"};
+    }
   } else if (req == "getUsers") {
     //format of the packet:
     //userName
@@ -190,7 +225,7 @@ class ReqThread : public Thread {
 int main(void)
 {
   std::vector<std::thread*> threads;
-  SocketServer server(2002);
+  SocketServer server(2001);
   ReqThread* requestThread = new ReqThread(&server, &threads);
 
   FlexWait cinWaiter(1, stdin);
